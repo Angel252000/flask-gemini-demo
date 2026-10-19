@@ -1,7 +1,11 @@
+import logging
+import os
+
 from flask import Flask, request, jsonify
 import google.generativeai as genai
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
 
 # Configurar la API de Google Generative AI
 genai.configure(api_key="TU_API_KEY_AQUI")
@@ -28,8 +32,11 @@ def ask():
             'prompt': prompt
         })
     
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        # El detalle de la excepción va al log del servidor, no a la
+        # respuesta: podría incluir la clave de API o detalles internos.
+        logging.exception('Error al llamar al modelo')
+        return jsonify({'error': 'No se pudo generar una respuesta. Intenta de nuevo.'}), 500
 
 @app.route('/', methods=['GET'])
 def home():
@@ -41,4 +48,10 @@ def home():
     })
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Por defecto: solo localhost y sin el depurador interactivo. El
+    # depurador de Werkzeug (debug=True) permite ejecutar código arbitrario
+    # desde el navegador si el servidor queda accesible en la red -- nunca
+    # lo actives junto con host="0.0.0.0".
+    debug = os.environ.get('FLASK_DEBUG', '0') == '1'
+    host = os.environ.get('FLASK_HOST', '127.0.0.1')
+    app.run(debug=debug, host=host, port=5000)
